@@ -36,11 +36,12 @@ const authenticateToken = (request, response, next) => {
   }
   if (jwtToken === undefined) {
     response.status(401);
-    response.send("Invalid Access Token");
+    response.send("Invalid JWT Token");
   } else {
     jwt.verify(jwtToken, "MY_SECRET_TOKEN", async (error, payload) => {
       if (error) {
-        response.send("Invalid Access Token");
+        response.status(401);
+        response.send("Invalid JWT Token");
       } else {
         next();
       }
@@ -68,9 +69,8 @@ const convertDistrictDbObject = (dbObject) => {
   };
 };
 //api-1.
-app.post("/login/", authenticateToken, async (request, response) => {
+app.post("/login/", async (request, response) => {
   const { username, password } = request.body;
-  const hashedPassword = bcrypt.hash(password, 10);
   const postQuery = `
     SELECT
       *
@@ -92,7 +92,7 @@ app.post("/login/", authenticateToken, async (request, response) => {
       response.send({ jwtToken });
     } else {
       response.status(400);
-      response.send("Invalid Password");
+      response.send("Invalid password");
     }
   }
 });
