@@ -1,0 +1,142 @@
+const express = require("express");
+const { open } = require("sqlite");
+const sqlite3 = require("sqlite3");
+const path = require("path");
+//
+const dbPath = path.join(__dirname, "todoApplication.db");
+//
+const app = express();
+//
+app.use(express.json());
+let db = null;
+//
+const initializeAndDbServer = async () => {
+  try {
+    db = await open({
+      filename: dbPath,
+      driver: sqlite3.Database,
+    });
+    app.listen(3000, () => {
+      console.log("Server is started at http://localhost:3000/");
+    });
+  } catch (error) {
+    console.log(`DB error ${error.message}`);
+    process.exit(1);
+  }
+};
+initializeAndDbServer();
+//
+const convertTodoDbObject = (dbObject) => {
+  return {
+    id: dbObject.id,
+    todo: dbObject.todo,
+    priority: dbObject.priority,
+    status: dbObject.status,
+    category: dbObject.category,
+    dueDate: dbObject.due_date,
+  };
+};
+const isPriority = (requestQuery) => {
+  return requestQuery.priority !== undefined;
+};
+const isCategory = (requestQuery) => {
+  return requestQuery.category !== undefined;
+};
+const isStatus = (requestQuery) => {
+  return requestQuery.status !== undefined;
+};
+const isCategoryAndPriority = (requestQuery) => {
+  return (
+    requestQuery.category !== undefined && requestQuery.priority !== undefined
+  );
+};
+const isPriorityAndStatus = (requestQuery) => {
+  return (
+    requestQuery.priority !== undefined && requestQuery.status !== undefined
+  );
+};
+const isStatusAndCategory = (requestQuery) => {
+  return (
+    requestQuery.status !== undefined && requestQuery.category !== undefined
+  );
+};
+//api-1
+app.get("/todos/", async (request, response) => {
+  const { search_q = "", priority, status, category } = request.query;
+  let getTodosQuery;
+  switch (true) {
+    case isPriority(request.query):
+      getTodosQuery = `
+        SELECT
+          *
+        FROM
+          todo
+        WHERE
+          todo LIKE '%${search_q}%'
+          AND priority = '${priority}';`;
+      break;
+    case isStatus(request.query):
+      getTodosQuery = `
+        SELECT
+          *
+        FROM
+          todo
+        WHERE
+          todo LIKE '%${search_q}%'
+          AND status = '${status}';`;
+      break;
+    case isCategory(request.query):
+      getTodosQuery = `
+        SELECT
+          *
+        FROM
+          todo
+        WHERE
+          todo LIKE '%${search_q}%'
+          AND category = '${category}';`;
+      break;
+    case isCategoryAndPriority(request.query):
+      getTodosQuery = `
+        SELECT
+          *
+        FROM
+          todo
+        WHERE
+          todo LIKE '%${search_q}%'
+          AND priority = '${priority}'
+          AND category = '${category}';`;
+      break;
+    case isPriorityAndStatus(request.query):
+      getTodosQuery = `
+        SELECT
+          *
+        FROM
+          todo
+        WHERE
+          todo LIKE '%${search_q}%'
+          AND priority = '${priority}'
+          AND status = '${status}';`;
+      break;
+    case isStatusAndCategory(request.query):
+      getTodosQuery = `
+        SELECT
+          *
+        FROM
+          todo
+        WHERE
+          todo LIKE '%${search_q}%'
+          AND status = '${status}'
+          AND category = '${category}';`;
+      break;
+    default:
+      getTodosQuery = `
+        SELECT
+          *
+        FROM
+          todo
+        WHERE
+          todo LIKE '%${search_q}%';`;
+  }
+  const getTodo = await db.all(getTodosQuery);
+  response.send(getTodo.map((eachTodo) => convertTodoDbObject(eachTodo)));
+});
